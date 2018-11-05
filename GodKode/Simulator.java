@@ -13,7 +13,7 @@ public class Simulator {
     public static void main(String[] args) throws IOException {
 
         pc = 0;
-        int instr,opcode,rd,rs1, rs2, funct3, funct7, imm1, imm2, imm;
+        int instr,opcode,rd,rs1, rs2, funct3, funct7, imm1, imm2, imm, Bimm;
 
         int[] progr = readBinaryFile(fileName);
 
@@ -31,9 +31,11 @@ public class Simulator {
             imm2 = (instr >> 25);
             funct7 = (instr >> 25);
 
+            pc++; // We count in 4 byte words
+
             switch (opcode) {
 
-                case 0x13: // Opcode 0010011
+                case 0x33: // Opcode 0010011
                     switch (funct3) {
                         case 0x00: //ADD or SUB
                             switch (funct7) {
@@ -70,10 +72,48 @@ public class Simulator {
                         case 0x06: //OR
                             reg[rd] = reg[rs1] | reg[rs2];
                             break;
-                        case 0x07://AND
+                        case 0x07: //AND
                             reg[rd] = reg[rs1] & reg[rs2];
                             break;
                     }
+                    break;
+                case 0x63: //Opcode 1100011
+
+                    Bimm = (imm2 << 5) & 0x800 + (imm1 << 11) & 0x400 + (imm2 << 5) & 0x3E0 + imm1 & 0x1E;
+
+                    switch (funct3) {
+                        case 0x00: //BEQ - Branch Equal
+                            if (reg[rs1] == reg[rs2]){
+                                pc = pc + Bimm - 1;
+                            }
+                            break;
+                        case 0x01: //BNE - Branch Not Equal
+                            if (reg[rs1] != reg[rs2]){
+                                pc = pc + Bimm - 1;
+                            }
+                            break;
+                        case 0x04: //BLT - Branch Less Than
+                            if (reg[rs1] < reg[rs2]){
+                                pc = pc + Bimm - 1;
+                            }
+                            break;
+                        case 0x05: //BGE - Branch Greater Than or Equal
+                            if (reg[rs1] >= reg[rs2]){
+                                pc = pc + Bimm - 1;
+                            }
+                            break;
+                        case 0x06: //BLTU - Branch Less Than Unsigned
+                            if (reg[rs1] < reg[rs2]){
+                                pc = pc + Bimm - 1;
+                            }
+                            break;
+                        case 0x07: //BGEU - Branch >= Unsigned
+                            if (reg[rs1] >= reg[rs2]){
+                                pc = pc + Bimm - 1;
+                            }
+                            break;
+                    }
+                    break;
                 case 0x73: // ecall
                     if (reg[10] == 10){
                         System.out.println("DONE");
@@ -84,7 +124,6 @@ public class Simulator {
                     break;
             }
 
-            ++pc; // We count in 4 byte words
             if (pc >= progr.length) {
                 break;
             }
