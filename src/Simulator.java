@@ -1,4 +1,3 @@
-
 import java.io.*;
 
 
@@ -14,8 +13,7 @@ public class Simulator {
     public static void main(String[] args) throws IOException {
 
         pc = 0;
-        int instr,opcode,rd,rs1,imm;
-        int funct7,funct3,rs2;
+        int instr,opcode,rd,rs1, rs2, funct3, funct7, imm1, imm2, imm;
 
         int[] progr = readBinaryFile(fileName);
 
@@ -24,26 +22,24 @@ public class Simulator {
 
             instr = progr[pc];
             opcode = instr & 0x7f;
+            rd = (instr >> 7) & 0x1f;
+            imm1 = (instr >> 7) & 0x01f;
+            funct3 = (instr >> 12) & 0x07;
+            rs1 = (instr >> 15) & 0x1f;
+            rs2 = (instr >> 20) & 0x1f;
+            imm = (instr >> 20);
+            imm2 = (instr >> 25);
+            funct7 = (instr >> 25);
 
             switch (opcode) {
 
-                case 0x13: // addi
-                    rd = (instr >> 7) & 0x01f;
-                    rs1 = (instr >> 15) & 0x01f;
-                    imm = (instr >> 20);
+                case 0x13: // Opcode 0010011
                     reg[rd] = reg[rs1] + imm;
                     break;
                 case 0x33: // add
-                    rd = (instr >> 7) & 0x01f;
-                    rs1 = (instr >> 15) & 0x01f;
-                    rs2 = (instr >> 20) & 0x01f;
                     reg[rd] = reg[rs1] + reg[rs2];
                     break;
                 case 0x73: // ecall
-                    rd = (instr >> 7) & 0x01f;
-                    funct3 = (instr >> 12) & 0x3;
-                    rs1 = (instr >> 15) & 0x01f;
-                    imm = (instr >> 20);
                     if (reg[10] == 10){
                         System.out.println("DONE");
                         System.exit(0);
