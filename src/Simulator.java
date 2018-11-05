@@ -7,7 +7,7 @@ public class Simulator {
 
     static int pc;
     static int reg[] = new int[31];
-    static String fileName = "addlarge.bin";
+    static String fileName = "branchcnt.bin";
 
 
 
@@ -64,8 +64,8 @@ public class Simulator {
                             break;
                         case 0x05: // funct3 = 101
                             switch (funct7){
-                                case 0x00: // SLRI
-                                    reg[rd] = reg[rs1] >> shamt;
+                                case 0x00: // SRLI
+                                    reg[rd] = reg[rs1] >>> shamt;
                                     break;
                                 case 0x20: // SRAI
                                     reg[rd] = reg[rs1] >> shamt;
@@ -111,7 +111,7 @@ public class Simulator {
                         case 0x05: //SRL or SRA
                             switch (funct7) {
                                 case 0x00://SRL - Shift Right
-                                    reg[rd] = reg[rs1] >> reg[rs2];
+                                    reg[rd] = reg[rs1] >>> reg[rs2];
                                     break;
                                 case 0x20://SRA - Shift Right Arithmetic
                                     reg[rd] = reg[rs1] >> reg[rs2];
@@ -181,7 +181,7 @@ public class Simulator {
                         number[i] = number[i] & 0xFF;
                     }
                 }
-                //System.out.println("\n" + number[0] + " " + number[1] + " "+ number[2] + " " + number[3] + " ");
+                System.out.println("\n" + number[0] + " " + number[1] + " "+ number[2] + " " + number[3] + " ");
                 instruction[counter] = number[0] + (number[1] << 8) + (number[2] << 16) + (number[3] << 24);
                 counter++;
 
