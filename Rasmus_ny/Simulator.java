@@ -8,6 +8,7 @@ public class Simulator {
     static int pc;
     static int reg[] = new int[31];
     static String fileName = "branchmany.bin";
+    static int[] mem = new int[0x100000];
 
 
 
@@ -26,6 +27,7 @@ public class Simulator {
             System.out.println(String.format("0x%08X", progr[k]));
         }
         System.out.println();
+
 
 
 
@@ -112,7 +114,7 @@ public class Simulator {
             imm_S = ((imm_S2 > 63) ? (-(((~imm_S)+1)& 0xFFF)) : imm_S);
 
             // Immediate value for B-type
-            imm_B = ((imm_B2 << 5) & 0x3E0) | ((imm_B1 << 10) & 0x400) | ((imm_B2 << 5) & 0x800) | (imm_B1 & 0x1E);
+            imm_B = ((imm_B2 << 5) & 0x3E0) | ((imm_B1 << 10) & 0x400) | ((imm_B2 << 5) & 0x800) | (imm_B1 & 0x01E);
             imm_B = ((imm_B2 >63) ? (-(((~imm_B)+1)& 0xFFF))/4 : imm_B/4);
 
             // Immediate value for U-type
@@ -128,19 +130,22 @@ public class Simulator {
                 case 0x03: // Opcode 0000011
                     switch (funct3){
                         case 0x00: // LB - Load Byte
-                            System.out.println("LB - Load Byte has not been implemented yet");
+                            reg[rd] = (byte) mem[reg[rs1]] + imm;
                             break;
                         case 0x01: // LH - Load Halfword
                             System.out.println("LH - Load Halfword has not been implemented yet");
+                            System.out.println("rd = " + rd + " reg[rd] = " + reg[rd] + " reg[rs1] = " + reg[rs1] + " imm = " + imm);
+                            reg[rd] = (short) mem[reg[rs1]] + imm;
                             break;
                         case 0x02: // LW - Load Word
-                            System.out.println("LW - Load Word has not been implemented yet");
+                            reg[rd] = mem[reg[rs1]] + imm;
                             break;
                         case 0x04: // LBU - Load Byte Unsigned
-                            System.out.println("LBU - Load Byte Unsigned has not been implemented yet");
+                            reg[rd] = (byte) (mem[reg[rs1]] + imm) & 0xFF;
                             break;
                         case 0x05: // LHU - Load Halfword Unsigned
                             System.out.println("Load Halfword Unsigned has not been implemented yet");
+                            reg[rd] = (short) (mem[reg[rs1]] + imm) & 0xFFFF;
                             break;
                         default:
                             System.out.println("For opcode 0x03, funct3" + funct3 + " has not been implemented yet");
@@ -193,13 +198,14 @@ public class Simulator {
                 case 0x23: // Opcode 0100011
                     switch (funct3){
                         case 0x00: // SB - Store Byte
-                            System.out.println("SB - Store Byte has not been implemented yet");
+                            mem[(reg[rs1] + imm_S)] = (byte) reg[rs2];
                             break;
                         case 0x01: // SH - Store Halfword
-                            System.out.println("SH - Store Halfword has not been implemented yet");
+                            mem[(reg[rs1] + imm_S)] = (short) reg[rs2];
                             break;
                         case 0x02: // SW - Store Word
-                            System.out.println("SW - Store Word has not been implemented yet");
+                            System.out.println("SW. rs1 = " + rs1 + " reg[rs1] = " + reg[rs1] + " imm = " + imm_S + " rs2 = " + rs2 +" reg[rs2] = " + reg[rs2]);
+                            mem[reg[rs1] + imm_S] = reg[rs2];
                             break;
                         default:
                             System.out.println("For opcode 0x23, funct3" + funct3 + " has not been implemented yet");
@@ -292,8 +298,8 @@ public class Simulator {
                     break;
 
                 case 0x67: // Opcode 1100111 JALR - Jump and Link Register
+                    reg[rd] = pc;
                     pc = reg[rs1] + imm;
-                    reg[rd+1] = pc;
                     break;
 
                 case 0x6f: // Opcode 1101111 JAL - Jump and Link
@@ -303,28 +309,47 @@ public class Simulator {
                     break;
 
                 case 0x73: // ecall
-                    if (reg[10] == 10){
-                        System.out.println("DONE");
-                        System.exit(0);
+                    switch (reg[10]){
+                        case 0x01:
+                            System.out.print(reg[11]);
+                            break;
+                        case 0x04:
+                            System.out.println("prints the null-terminated string whose address is in a1 - INCOMPLETE");
+                            break;
+                        case 0x09:
+                            System.out.println("allocates a1 bytes on the heap, returns pointer to start in a0 - INCOMPLETE");
+                            break;
+                        case 0x0a:
+                            System.out.println("DONE");
+                            System.exit(0);
+                            break;
+                        case 0x0b:
+                            System.out.println((char) reg[11]);
+                            break;
+                        case 0x2f:
+                            break;
+                        default:
+                            System.out.println("Environmental Call " + reg[10] + " not yet implemented");
                     }
                     break;
+
                 default:
                     System.out.println("Opcode " + opcode + " not yet implemented");
                     break;
             }
 
-
-            if (pc >= progr.length) {
-                break;
-            }
+            reg[0] = 0; // Sets x0 = 0;
 
             for (int i = 0; i < reg.length; ++i) {
                 System.out.print(reg[i] + " ");
             }
             System.out.println();
 
-        }
+            if (pc >= progr.length) {
+                break;
+            }
 
+        }
 
 
     }
