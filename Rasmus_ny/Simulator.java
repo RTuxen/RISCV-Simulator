@@ -6,8 +6,8 @@ public class Simulator {
 
 
     static int pc;
-    static int reg[] = new int[31];
-    static String fileName = "branchmany.bin";
+    static int reg[] = new int[32];
+    static String fileName = "InstrTest/test_lw.bin";
     static int[] mem = new int[0x100000];
 
 
@@ -15,7 +15,7 @@ public class Simulator {
     public static void main(String[] args) throws IOException {
 
         pc = 0;
-        int instr,opcode,rd,rs1, rs2, funct3, funct7,shamt;
+        int instr,opcode,rd,rs1, rs2, funct3, funct7,shamt,remainder;
         int imm_B1, imm_B2,imm_S1,imm_S2,imm,imm_B,imm_J,imm_U,imm_S;
 
 
@@ -29,65 +29,6 @@ public class Simulator {
         System.out.println();
 
 
-
-
-
-        // Selv Lavet tests
-        /*
-        int[] progr = new int[9];
-        progr[0] = 0x014000ef;
-        progr[1] = 0xffd00593;
-        progr[2] = 0x01c00613;
-        progr[3] = 0x00b60633;
-        progr[4] = 0x00c000ef;
-        progr[5] = 0x30900593;
-        progr[6] = 0x00008067;
-        progr[7] = 0x00a00513;
-        progr[8] = 0x00000073;
-        for (int k = 0; k < progr.length; k++){
-            System.out.println(String.format("0x%08X", progr[k]));
-        }
-        */
-
-
-
-
-        // Test af imm_J
-        /*
-        instr = progr[5];
-        imm = (instr >> 12) & 0xFFFFF;
-        imm_J = ((imm & 0x80000) <<  8) | ((imm & 0x7FE00) >> 8) | ((imm & 100) << 3) | ((imm & 0xFF) << 12);
-        imm_J = ((imm > 524287) ? (-(((~imm_J)+1)& 0xFFFFFFFF))/4 : imm_J/4);
-        System.out.println("imm   = " + Integer.toBinaryString(imm));
-        System.out.println("imm_J = " + Integer.toBinaryString(imm_J));
-        System.out.println("imm_J = " + imm_J);
-
-        imm_B = (((((instr >> 20) & 0xFFFFFFE0) | ((instr >>> 7) & 0x0000001F)) & 0xFFFFF7FE) | (((((instr >> 20) & 0xFFFFFFE0) | ((instr >>> 7) & 0x0000001F)) & 0x00000001) << 11))/4;
-        imm_J = (((instr >> 20) & 0xFFF007FE) | ((instr >>> 9) & 0x00000800) | (instr & 0x000FF000))/4;
-
-        System.out.println("Deres metode imm_J = " +imm_J);
-        System.out.println("Deres metode imm_J =" + Integer.toBinaryString(imm_J));
-        System.out.println();
-        */
-
-
-        // Test af imm_S
-
-        /*
-        instr = progr[1];
-        imm_S1 = (instr >> 7) & 0x1f;
-        imm_S2 = (instr >>> 25) ;
-        imm_S = (imm_S2 << 5) | imm_S1;
-        imm_S = ((imm_S2 >63) ? (-(((~imm_S)+1)& 0xFFF)) : imm_S);
-        System.out.println("imm2 = "+ Integer.toBinaryString(imm_S2) + " imm1 = " + Integer.toBinaryString(imm_S1));
-        System.out.println(Integer.toBinaryString(imm_S));
-        System.out.println("imm_S = " + imm_S);
-
-        imm_S = (((instr >> 20) & 0xFFFFFFE0) | ((instr >>> 7) & 0x0000001F));
-        System.out.println("Deres metode imm_S = " +imm_S);
-        System.out.println("Deres metode imm_S =" + Integer.toBinaryString(imm_S));
-        System.out.println();
-        */
 
 
 
@@ -130,22 +71,23 @@ public class Simulator {
                 case 0x03: // Opcode 0000011
                     switch (funct3){
                         case 0x00: // LB - Load Byte
-                            reg[rd] = (byte) mem[reg[rs1]] + imm;
+                            remainder = (reg[rs1] + imm)%4;
+                            reg[rd] = (byte) (mem[reg[rs1] + imm - remainder] >> 8*remainder);
                             break;
                         case 0x01: // LH - Load Halfword
-                            System.out.println("LH - Load Halfword has not been implemented yet");
-                            System.out.println("rd = " + rd + " reg[rd] = " + reg[rd] + " reg[rs1] = " + reg[rs1] + " imm = " + imm);
-                            reg[rd] = (short) mem[reg[rs1]] + imm;
+                            remainder = (reg[rs1] + imm)%4;
+                            reg[rd] = (short) (mem[reg[rs1] + imm-remainder] >> 8*remainder);
                             break;
                         case 0x02: // LW - Load Word
-                            reg[rd] = mem[reg[rs1]] + imm;
+                            reg[rd] = mem[reg[rs1]+imm];
                             break;
                         case 0x04: // LBU - Load Byte Unsigned
-                            reg[rd] = (byte) (mem[reg[rs1]] + imm) & 0xFF;
+                            remainder = (reg[rs1] + imm)%4;
+                            reg[rd] = (byte) ((mem[reg[rs1] + imm - remainder] >> 8*remainder) & 0xFF);
                             break;
                         case 0x05: // LHU - Load Halfword Unsigned
-                            System.out.println("Load Halfword Unsigned has not been implemented yet");
-                            reg[rd] = (short) (mem[reg[rs1]] + imm) & 0xFFFF;
+                            remainder = (reg[rs1] + imm)%4;
+                            reg[rd] = (short) ((mem[reg[rs1] + imm-remainder] >> 8*remainder) & 0xFFFF);
                             break;
                         default:
                             System.out.println("For opcode 0x03, funct3" + funct3 + " has not been implemented yet");
@@ -192,19 +134,19 @@ public class Simulator {
                     break;
 
                 case 0x17: // opcode 0010111 AUIPC - Add Upper Immediate to PC
-                    reg[rd] = pc + imm_U;
+                    reg[rd] = (pc-1)*4 + imm_U;
                     break;
 
                 case 0x23: // Opcode 0100011
                     switch (funct3){
                         case 0x00: // SB - Store Byte
                             mem[(reg[rs1] + imm_S)] = (byte) reg[rs2];
+                            System.out.println(mem[reg[rs1] + imm_S]);
                             break;
                         case 0x01: // SH - Store Halfword
                             mem[(reg[rs1] + imm_S)] = (short) reg[rs2];
                             break;
                         case 0x02: // SW - Store Word
-                            System.out.println("SW. rs1 = " + rs1 + " reg[rs1] = " + reg[rs1] + " imm = " + imm_S + " rs2 = " + rs2 +" reg[rs2] = " + reg[rs2]);
                             mem[reg[rs1] + imm_S] = reg[rs2];
                             break;
                         default:
@@ -219,6 +161,9 @@ public class Simulator {
                             switch (funct7) {
                                 case 0x00: //ADD
                                     reg[rd] = reg[rs1] + reg[rs2];
+                                    break;
+                                case 0x01: // MUL
+                                    reg[rd] = reg[rs1] * reg[rs2];
                                     break;
                                 case 0x20: //SUB
                                     reg[rd] = reg[rs1] - reg[rs2];
@@ -235,7 +180,14 @@ public class Simulator {
                             reg[rd] = (reg[rs1] < reg[rs2]) ? 1 : 0;
                             break;
                         case 0x04: //XOR
-                            reg[rd] = reg[rs1] ^ reg[rs2];
+                            switch (funct7){
+                                case 0x00: // XOR
+                                    reg[rd] = reg[rs1] ^ reg[rs2];
+                                    break;
+                                case 0x01: // DIV
+                                    reg[rd] = reg[rs1]/reg[rs2];
+                                    break;
+                            }
                             break;
                         case 0x05: //SRL or SRA
                             switch (funct7) {
@@ -298,12 +250,12 @@ public class Simulator {
                     break;
 
                 case 0x67: // Opcode 1100111 JALR - Jump and Link Register
-                    reg[rd] = pc;
-                    pc = reg[rs1] + imm;
+                    reg[rd] = pc*4;
+                    pc = (reg[rs1] + imm)/4;
                     break;
 
                 case 0x6f: // Opcode 1101111 JAL - Jump and Link
-                    reg[rd] = pc;
+                    reg[rd] = pc*4;
                     pc += imm_J -1;
 
                     break;
@@ -329,7 +281,7 @@ public class Simulator {
                         case 0x2f:
                             break;
                         default:
-                            System.out.println("Environmental Call " + reg[10] + " not yet implemented");
+                            System.out.println("Environmental Call " + reg[10] + " not implemented");
                     }
                     break;
 
@@ -366,7 +318,7 @@ public class Simulator {
         DataInputStream inputFile =
                 new DataInputStream(fstream);
 
-        System.out.print("   ***Reading numbers from the binary file.");
+        //System.out.print("   ***Reading numbers from the binary file.");
 
         // Read data from the file.
         while (!endOfFile) {
@@ -392,7 +344,7 @@ public class Simulator {
             instructionList[j] = instruction[j];
         }
 
-        System.out.println("\n   ***Done with reading from a binary file.");
+        //System.out.println("\n   ***Done with reading from a binary file.");
         return instructionList;
 
     }
