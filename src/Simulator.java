@@ -7,8 +7,9 @@ public class Simulator {
 
     static int pc;
     static int reg[] = new int[32];
-    static String fileName = "loop.bin";
-    static String fileNameRes = "loop.res";
+    static String name = "mulhu";
+    static String fileName = "InstrTest/test_" + name + ".bin";
+    static String fileNameRes = "InstrTest/test_" + name + ".res";
 
 
 
@@ -17,12 +18,14 @@ public class Simulator {
         pc = 0;
         int instr,opcode,rd,rs1, rs2, funct3, funct7,shamt,remainder;
         int imm_B1, imm_B2,imm_S1,imm_S2,imm,imm_B,imm_J,imm_U,imm_S;
+        int counter,offset;
         long MulResult;
+        char ch;
 
 
         int[] progr = readBinaryFile(fileName);
 
-
+        /*
         // Prints list of all instructions
         System.out.println("List of Instructions");
         for (int k = 0; k < progr.length; k++){
@@ -31,6 +34,7 @@ public class Simulator {
             }
         }
         System.out.println();
+        */
 
 
         while(pc < progr.length) {
@@ -75,10 +79,12 @@ public class Simulator {
                         case 0x00: // LB - Load Byte
                             remainder = (reg[rs1] + imm)%4;
                             reg[rd] = (byte) (progr[reg[rs1] + imm - remainder] >> 8*remainder);
+                            reg[rd] = (byte) progr[reg[rs1] + imm];
                             break;
                         case 0x01: // LH - Load Halfword
                             remainder = (reg[rs1] + imm)%4;
                             reg[rd] = (short) (progr[reg[rs1] + imm-remainder] >> 8*remainder);
+                            reg[rd] = (short) progr[reg[rs1] + imm];
                             break;
                         case 0x02: // LW - Load Word
                             reg[rd] = progr[reg[rs1]+imm];
@@ -86,10 +92,12 @@ public class Simulator {
                         case 0x04: // LBU - Load Byte Unsigned
                             remainder = (reg[rs1] + imm)%4;
                             reg[rd] = (byte) ((progr[reg[rs1] + imm - remainder] >> 8*remainder) & 0xFF);
+                            reg[rd] = (byte) progr[reg[rs1] + imm] & 0xFF;
                             break;
                         case 0x05: // LHU - Load Halfword Unsigned
                             remainder = (reg[rs1] + imm)%4;
                             reg[rd] = (short) ((progr[reg[rs1] + imm-remainder] >> 8*remainder) & 0xFFFF);
+                            reg[rd] = (short) progr[reg[rs1] + imm] & 0xFFFF;
                             break;
                         default:
                             System.out.println("For opcode 0x03, funct3" + funct3 + " has not been implemented yet");
@@ -226,9 +234,9 @@ public class Simulator {
                                     break;
                                 case 0x01: // DIVU
                                     if(reg[rs2] == 0){ // Checks if divisor is equal to 0
-                                        reg[rd] = -1;
+                                        reg[rd] = reg[rs1];
                                     } else {
-                                        reg[rd] = reg[rs1]/reg[rs2];
+                                        reg[rd] = (int) (Integer.toUnsignedLong(reg[rs1])/Integer.toUnsignedLong(reg[rs2]));
                                     }
                                     break;
                                 case 0x20://SRA - Shift Right Arithmetic
@@ -296,12 +304,12 @@ public class Simulator {
                             }
                             break;
                         case 0x06: // BLTU - Branch Less Than Unsigned
-                            if (reg[rs1] < reg[rs2]){
+                            if (Integer.toUnsignedLong(reg[rs1]) < Integer.toUnsignedLong(reg[rs2])){
                                 pc = pc + imm_B - 1;
                             }
                             break;
                         case 0x07: // BGEU - Branch >= Unsigned
-                            if (reg[rs1] >= reg[rs2]){
+                            if (Integer.toUnsignedLong(reg[rs1]) >= Integer.toUnsignedLong(reg[rs2])){
                                 pc = pc + imm_B - 1;
                             }
                             break;
@@ -324,14 +332,31 @@ public class Simulator {
                         case 0x01:
                             System.out.print(reg[11]);
                             break;
-                        case 0x04:
-                            System.out.println("prints the null-terminated string whose address is in a1 - INCOMPLETE");
+                        case 0x04: // Prints null-terminated string whose adress is in a1
+                            counter = 0;
+                            offset = 0;
+                            for(;;){
+                                if (counter == 4){
+                                    offset +=1;
+                                    counter=0;
+                                }
+                                ch = (char) ((progr[(reg[11]/4)+offset] >> 8*counter) & 0xFF);
+                                if (ch == 0){
+                                    break;
+                                }
+                                System.out.print(ch);
+                                counter++;
+                            }
+                            System.out.println();
                             break;
-                        case 0x09:
-                            System.out.println("allocates a1 bytes on the heap, returns pointer to start in a0 - INCOMPLETE");
+                        case 0x09: // allocates a1 bytes on the heap, returns pointer to start in a0 - INCOMPLETE
                             break;
                         case 0x0a:
-                            System.out.println("DONE");
+                            System.out.println("Result:");
+                            for (int i = 0; i < reg.length; ++i) {
+                                System.out.print(reg[i] + " ");
+                            }
+                            System.out.println();
                             printResult(fileNameRes);
                             System.exit(0);
                             break;
@@ -339,9 +364,10 @@ public class Simulator {
                             System.out.println((char) reg[11]);
                             break;
                         case 0x2f:
+                            System.out.println("Exited with error code " + reg[11]);
                             break;
                         default:
-                            System.out.println("Environmental Call " + reg[10] + " not implemented");
+                            System.out.println("Invalid ecall " + reg[10]);
                     }
                     break;
 
@@ -352,11 +378,12 @@ public class Simulator {
 
             reg[0] = 0; // Forces x0 = 0;
 
-            //System.out.println("opcode = " + String.format("0x%02X", opcode));
+            /*
             for (int i = 0; i < reg.length; ++i) {
                 System.out.print(reg[i] + " ");
             }
             System.out.println();
+            */
 
         }
 
@@ -416,5 +443,6 @@ public class Simulator {
         }
 
     }
+
 
 }
