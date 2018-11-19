@@ -7,8 +7,9 @@ public class Simulator {
 
     static int pc;
     static int reg[] = new int[32];
-    static String fileName = "InstrTest/test_lw.bin";
-    static int[] mem = new int[0x100000];
+    static String fileName = "loop.bin";
+    static String fileNameRes = "loop.res";
+    static int[] mem = new int[0x1FFFFFF];
 
 
 
@@ -17,9 +18,11 @@ public class Simulator {
         pc = 0;
         int instr,opcode,rd,rs1, rs2, funct3, funct7,shamt,remainder;
         int imm_B1, imm_B2,imm_S1,imm_S2,imm,imm_B,imm_J,imm_U,imm_S;
+        long MulResult;
 
 
         int[] progr = readBinaryFile(fileName);
+
 
         // Prints list of all instructions
         System.out.println("List of Instructions");
@@ -29,10 +32,7 @@ public class Simulator {
         System.out.println();
 
 
-
-
-
-        for (;;) {
+        while(pc < progr.length) {
 
             instr = progr[pc];
             opcode = instr & 0x7f;
@@ -68,6 +68,7 @@ public class Simulator {
             ++pc; // We count in 4 byte words
 
             switch (opcode) {
+
                 case 0x03: // Opcode 0000011
                     switch (funct3){
                         case 0x00: // LB - Load Byte
@@ -107,7 +108,7 @@ public class Simulator {
                             reg[rd] = (reg[rs1] < imm) ? 1 : 0;
                             break;
                         case 0x03: // SLTIU
-                            reg[rd] = (reg[rs1] < imm) ? 1 : 0;
+                            reg[rd] = (Integer.toUnsignedLong(reg[rs1]) < imm) ? 1 : 0;
                             break;
                         case 0x04: // XORI
                             reg[rd] = reg[rs1] ^imm;
@@ -141,7 +142,6 @@ public class Simulator {
                     switch (funct3){
                         case 0x00: // SB - Store Byte
                             mem[(reg[rs1] + imm_S)] = (byte) reg[rs2];
-                            System.out.println(mem[reg[rs1] + imm_S]);
                             break;
                         case 0x01: // SH - Store Halfword
                             mem[(reg[rs1] + imm_S)] = (short) reg[rs2];
@@ -157,42 +157,78 @@ public class Simulator {
                 case 0x33: // Opcode 0110011
 
                     switch (funct3) {
-                        case 0x00: //ADD or SUB
+                        case 0x00:
                             switch (funct7) {
                                 case 0x00: //ADD
                                     reg[rd] = reg[rs1] + reg[rs2];
                                     break;
                                 case 0x01: // MUL
-                                    reg[rd] = reg[rs1] * reg[rs2];
+                                    MulResult = reg[rs1] * reg[rs2];
+                                    reg[rd] = (int) MulResult;
                                     break;
                                 case 0x20: //SUB
                                     reg[rd] = reg[rs1] - reg[rs2];
                                     break;
                             }
                             break;
-                        case 0x01: //SLL - Shift Left
-                            reg[rd] = reg[rs1] << reg[rs2];
+                        case 0x01:
+                            switch (funct7){
+                                case 0x00: // SLL - Shift Left
+                                    reg[rd] = reg[rs1] << reg[rs2];
+                                    break;
+                                case 0x01: // MULH
+                                    MulResult = (long) reg[rs1] * reg[rs2];
+                                    reg[rd] = (int) (MulResult >> 32);
+                                    break;
+                            }
                             break;
-                        case 0x02: //SLT - Set Less Than
-                            reg[rd] = (reg[rs1] < reg[rs2]) ? 1 : 0;
+                        case 0x02:
+                            switch (funct7){
+                                case 0x00: // SLT - Set Less Than
+                                    reg[rd] = (reg[rs1] < reg[rs2]) ? 1 : 0;
+                                    break;
+                                case 0x01: // MULHSU
+                                    MulResult = (long) reg[rs1] * Integer.toUnsignedLong(reg[rs2]);
+                                    reg[rd] = (int) (MulResult >> 32);
+                                    break;
+                            }
                             break;
-                        case 0x03: //SLTU - Set Less Than Unsigned
-                            reg[rd] = (reg[rs1] < reg[rs2]) ? 1 : 0;
+                        case 0x03:
+                            switch (funct7){
+                                case 0x00: // SLTU - Set Less Than Unsigned
+                                    reg[rd] = (Integer.toUnsignedLong(reg[rs1]) < Integer.toUnsignedLong(reg[rs1])) ? 1 : 0;
+                                    break;
+                                case 0x01: // MULHU
+                                    MulResult = Integer.toUnsignedLong(reg[rs1]) * Integer.toUnsignedLong(reg[rs2]);
+                                    reg[rd] = (int) (MulResult >> 32);
+                                    break;
+                            }
                             break;
-                        case 0x04: //XOR
+                        case 0x04:
                             switch (funct7){
                                 case 0x00: // XOR
                                     reg[rd] = reg[rs1] ^ reg[rs2];
                                     break;
                                 case 0x01: // DIV
-                                    reg[rd] = reg[rs1]/reg[rs2];
+                                    if(reg[rs2] == 0){ // Checks if divisor is equal to 0
+                                        reg[rd] = -1;
+                                    } else {
+                                        reg[rd] = reg[rs1]/reg[rs2];
+                                    }
                                     break;
                             }
                             break;
-                        case 0x05: //SRL or SRA
+                        case 0x05:
                             switch (funct7) {
                                 case 0x00://SRL - Shift Right
                                     reg[rd] = reg[rs1] >>> reg[rs2];
+                                    break;
+                                case 0x01: // DIVU
+                                    if(reg[rs2] == 0){ // Checks if divisor is equal to 0
+                                        reg[rd] = -1;
+                                    } else {
+                                        reg[rd] = reg[rs1]/reg[rs2];
+                                    }
                                     break;
                                 case 0x20://SRA - Shift Right Arithmetic
                                     reg[rd] = reg[rs1] >> reg[rs2];
@@ -200,17 +236,39 @@ public class Simulator {
                             }
                             break;
                         case 0x06: //OR
-                            reg[rd] = reg[rs1] | reg[rs2];
+                            switch (funct7){
+                                case 00: // OR
+                                    reg[rd] = reg[rs1] | reg[rs2];
+                                    break;
+                                case 0x01: // Rem - Remainder
+                                    if(reg[rs2] == 0){ // Checks if divisor is equal to 0
+                                        reg[rd] = reg[rs1];
+                                    } else {
+                                        reg[rd] = reg[rs1] % reg[rs2];
+                                    }
+                                    break;
+                            }
                             break;
-                        case 0x07: //AND
-                            reg[rd] = reg[rs1] & reg[rs2];
+                        case 0x07:
+                            switch (funct7){
+                                case 0x01: // REMU - Remainder Unsigned
+                                    if(reg[rs2] == 0){ // Checks if divisor is equal to 0
+                                        reg[rd] = reg[rs1];
+                                    } else {
+                                        reg[rd] = reg[rs1] % reg[rs2];
+                                    }
+                                    break;
+                                case 0x00: // AND
+                                    reg[rd] = reg[rs1] & reg[rs2];
+                                    break;
+                            }
                             break;
 
                     }
                     break;
 
                 case 0x37: // opcode 0110111 LUI - Load Upper Immediate
-                    reg[rd] = reg[rs1] + imm_U;
+                    reg[rd] = imm_U;
                     break;
 
                 case 0x63: //Opcode 1100011
@@ -273,6 +331,7 @@ public class Simulator {
                             break;
                         case 0x0a:
                             System.out.println("DONE");
+                            printResult(fileNameRes);
                             System.exit(0);
                             break;
                         case 0x0b:
@@ -290,27 +349,25 @@ public class Simulator {
                     break;
             }
 
-            reg[0] = 0; // Sets x0 = 0;
+            reg[0] = 0; // Forces x0 = 0;
 
+            //System.out.println("opcode = " + String.format("0x%02X", opcode));
             for (int i = 0; i < reg.length; ++i) {
                 System.out.print(reg[i] + " ");
             }
             System.out.println();
-
-            if (pc >= progr.length) {
-                break;
-            }
 
         }
 
 
     }
     private static int[] readBinaryFile(String input) throws IOException {
-        int[] number = new int[4]; // Holds a number
-        int counter = 0;
-        int instruction[]= new int[1000];
 
-        boolean endOfFile = false; // End of file flag
+        File data = new File(input);
+
+        int FileLength = (int) data.length()/4; // Length of file in words
+        int instructionList[]= new int[FileLength];
+
 
         // Opens a binary file.
         FileInputStream fstream =
@@ -318,34 +375,44 @@ public class Simulator {
         DataInputStream inputFile =
                 new DataInputStream(fstream);
 
-        //System.out.print("   ***Reading numbers from the binary file.");
-
-        // Read data from the file.
-        while (!endOfFile) {
-            try {
-                for (int i = 0; i<=3; i++){
-                    number[i]=inputFile.readByte();
-                    number[i] = number[i] & 0xFF;
-                }
-                //System.out.println("\n" + number[0] + " " + number[1] + " "+ number[2] + " " + number[3] + " ");
-                instruction[counter] = number[0] + (number[1] << 8) + (number[2] << 16) + (number[3] << 24);
-                counter++;
-
-            } catch (Exception e) {
-                endOfFile = true;
+        for (int i = 0; i < FileLength; i++){
+            for(int j = 0; j <= 3; j++){
+                instructionList[i] += (inputFile.readByte() & 0xFF) << (8*j);
             }
-
         }
+
         // Closes the file.
         inputFile.close();
 
-        int[] instructionList = new int[counter]; // Loads instructions into array of correct size
-        for (int j = 0; j<counter; j++){
-            instructionList[j] = instruction[j];
-        }
-
-        //System.out.println("\n   ***Done with reading from a binary file.");
         return instructionList;
+
+    }
+
+    private static void printResult(String input) throws IOException{
+        File data = new File(input);
+
+        int FileLength = (int) data.length()/4; // Length of file in words
+        int resultList[]= new int[FileLength];
+
+
+        // Opens a binary file.
+        FileInputStream fstream =
+                new FileInputStream(input);
+        DataInputStream inputFile =
+                new DataInputStream(fstream);
+
+        for (int i = 0; i < FileLength; i++){
+            for(int j = 0; j <= 3; j++){
+                resultList[i] += (inputFile.readByte() & 0xFF) << (8*j);
+            }
+        }
+        // Closes the file.
+
+        inputFile.close();
+        System.out.println("Expected Result:");
+        for (int i = 0; i < resultList.length; ++i) {
+            System.out.print(resultList[i] + " ");
+        }
 
     }
 
