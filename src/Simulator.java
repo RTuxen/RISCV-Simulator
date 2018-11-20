@@ -344,7 +344,7 @@ public class Simulator {
                         case 0x01:
                             System.out.print(reg[11]);
                             break;
-                        case 0x04: // Prints null-terminated string whose adress is in a1
+                        case 0x04: // Prints null-terminated string whose address is in a1
                             counter = 0;
                             offset = 0;
                             for(;;){
@@ -370,6 +370,7 @@ public class Simulator {
                             }
                             System.out.println();
                             printResult(fileNameRes);
+                            writeOutput(reg);
                             System.exit(0);
                             break;
                         case 0x0b:
@@ -454,6 +455,26 @@ public class Simulator {
             System.out.print(resultList[i] + " ");
         }
 
+    }
+
+    private static void writeOutput (int[] data) throws IOException{
+        FileOutputStream out = new FileOutputStream("data.bin");
+
+        byte[] array = intArrayToByteArray(data);
+        out.write(array);
+    }
+
+    private static byte[] intArrayToByteArray(int[] data) {
+        byte[]array = new byte[data.length << 2];
+
+        for (int i=0; i < data.length; i++) {
+            int j = i << 2;
+            array[j++] = (byte) ((data[i] >>> 0) & 0xff);
+            array[j++] = (byte) ((data[i] >>> 8) & 0xff);
+            array[j++] = (byte) ((data[i] >>> 16) & 0xff);
+            array[j++] = (byte) ((data[i] >>> 24) & 0xff);
+        }
+        return array;
     }
 
 
