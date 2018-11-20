@@ -7,7 +7,7 @@ public class Simulator {
 
     static int pc;
     static int reg[] = new int[32];
-    static String name = "mulhu";
+    static String name = "random10";
     static String fileName = "InstrTest/test_" + name + ".bin";
     static String fileNameRes = "InstrTest/test_" + name + ".res";
 
@@ -78,26 +78,38 @@ public class Simulator {
                     switch (funct3){
                         case 0x00: // LB - Load Byte
                             remainder = (reg[rs1] + imm)%4;
-                            reg[rd] = (byte) (progr[reg[rs1] + imm - remainder] >> 8*remainder);
-                            reg[rd] = (byte) progr[reg[rs1] + imm];
+                            if(progr[reg[rs1] + imm -remainder] > 127 || progr[reg[rs1] + imm -remainder] < -128){
+                                reg[rd] = (byte) (progr[reg[rs1] + imm - remainder] >> 8*remainder);
+                            } else {
+                                reg[rd] = (byte) progr[reg[rs1] + imm];
+                            }
                             break;
                         case 0x01: // LH - Load Halfword
                             remainder = (reg[rs1] + imm)%4;
-                            reg[rd] = (short) (progr[reg[rs1] + imm-remainder] >> 8*remainder);
-                            reg[rd] = (short) progr[reg[rs1] + imm];
+                            if(progr[reg[rs1] + imm -remainder] > 32767 || progr[reg[rs1] + imm -remainder] < -32768){
+                                reg[rd] = (short) (progr[reg[rs1] + imm-remainder] >> 8*remainder);
+                            } else {
+                                reg[rd] = (short) progr[reg[rs1] + imm];
+                            }
                             break;
                         case 0x02: // LW - Load Word
                             reg[rd] = progr[reg[rs1]+imm];
                             break;
                         case 0x04: // LBU - Load Byte Unsigned
                             remainder = (reg[rs1] + imm)%4;
-                            reg[rd] = (byte) ((progr[reg[rs1] + imm - remainder] >> 8*remainder) & 0xFF);
-                            reg[rd] = (byte) progr[reg[rs1] + imm] & 0xFF;
+                            if(progr[reg[rs1] + imm -remainder] > 127 || progr[reg[rs1] + imm -remainder] < -128){
+                                reg[rd] = (byte) (progr[reg[rs1] + imm - remainder] >> 8*remainder) & 0xFF;
+                            } else {
+                                reg[rd] = (byte) progr[reg[rs1] + imm] & 0xFF;
+                            }
                             break;
                         case 0x05: // LHU - Load Halfword Unsigned
                             remainder = (reg[rs1] + imm)%4;
-                            reg[rd] = (short) ((progr[reg[rs1] + imm-remainder] >> 8*remainder) & 0xFFFF);
-                            reg[rd] = (short) progr[reg[rs1] + imm] & 0xFFFF;
+                            if(progr[reg[rs1] + imm -remainder] > 32767 || progr[reg[rs1] + imm -remainder] < -32768){
+                                reg[rd] = (short) (progr[reg[rs1] + imm-remainder] >> 8*remainder) & 0xFFFF;
+                            } else {
+                                reg[rd] = (short) progr[reg[rs1] + imm] & 0xFFFF;
+                            }
                             break;
                         default:
                             System.out.println("For opcode 0x03, funct3" + funct3 + " has not been implemented yet");
@@ -117,7 +129,7 @@ public class Simulator {
                             reg[rd] = (reg[rs1] < imm) ? 1 : 0;
                             break;
                         case 0x03: // SLTIU
-                            reg[rd] = (Integer.toUnsignedLong(reg[rs1]) < imm) ? 1 : 0;
+                            reg[rd] = (Integer.toUnsignedLong(reg[rs1]) < Integer.toUnsignedLong(imm)) ? 1 : 0;
                             break;
                         case 0x04: // XORI
                             reg[rd] = reg[rs1] ^imm;
@@ -205,7 +217,7 @@ public class Simulator {
                         case 0x03:
                             switch (funct7){
                                 case 0x00: // SLTU - Set Less Than Unsigned
-                                    reg[rd] = (Integer.toUnsignedLong(reg[rs1]) < Integer.toUnsignedLong(reg[rs1])) ? 1 : 0;
+                                    reg[rd] = (Integer.toUnsignedLong(reg[rs1]) < Integer.toUnsignedLong(reg[rs2])) ? 1 : 0;
                                     break;
                                 case 0x01: // MULHU
                                     MulResult = Integer.toUnsignedLong(reg[rs1]) * Integer.toUnsignedLong(reg[rs2]);
@@ -262,9 +274,9 @@ public class Simulator {
                             switch (funct7){
                                 case 0x01: // REMU - Remainder Unsigned
                                     if(reg[rs2] == 0){ // Checks if divisor is equal to 0
-                                        reg[rd] = reg[rs1];
+                                        reg[rd] = (int) Integer.toUnsignedLong(reg[rs1]);
                                     } else {
-                                        reg[rd] = reg[rs1] % reg[rs2];
+                                        reg[rd] = (int) (Integer.toUnsignedLong(reg[rs1]) % Integer.toUnsignedLong(reg[rs2]));
                                     }
                                     break;
                                 case 0x00: // AND
