@@ -13,6 +13,9 @@ public class Simulator {
     // Sets memory size to 100 MB
     static int memorySize = 0x2FAF080;
 
+    // Memory array
+    static int[] progr = new  int[memorySize];
+
     // Name of test
     static String testname = "loop";
 
@@ -40,12 +43,12 @@ public class Simulator {
         char ch;
 
 
-        int[] progr = readBinaryFile(testfileName); // loads memory with instructions
-        System.out.println(progr.length);
+        int length = readBinaryFile(testfileName); // loads memory with instructions
+
 
 
         // Main loop
-        while(pc < progr.length) {
+        while(pc < length) {
 
             instr = progr[pc];
             opcode = instr & 0x7f;
@@ -86,26 +89,26 @@ public class Simulator {
 
                     switch (funct3){
                         case 0x00: // LB - Load Byte
-                            reg[rd] = getByte(progr,reg[rs1],imm,0);
+                            reg[rd] = getByte(reg[rs1],imm,0);
                             break;
                         case 0x01: // LH - Load Halfword
-                            byte1 = getByte(progr,reg[rs1],imm,0);
-                            byte2 = getByte(progr,reg[rs1],imm,1);
+                            byte1 = getByte(reg[rs1],imm,0);
+                            byte2 = getByte(reg[rs1],imm,1);
                             reg[rd] = (short)(((byte2 & 0xFF) << 8) | (byte1 & 0xFF));
                             break;
                         case 0x02: // LW - Load Word
-                            byte1 = getByte(progr,reg[rs1],imm,0);
-                            byte2 = getByte(progr,reg[rs1],imm,1);
-                            byte3 = getByte(progr,reg[rs1],imm,2);
-                            byte4 = getByte(progr,reg[rs1],imm,3);
+                            byte1 = getByte(reg[rs1],imm,0);
+                            byte2 = getByte(reg[rs1],imm,1);
+                            byte3 = getByte(reg[rs1],imm,2);
+                            byte4 = getByte(reg[rs1],imm,3);
                             reg[rd] = ( ((byte4 & 0xFF) << 24) | ((byte3 & 0xFF) << 16) | ((byte2 & 0xFF) << 8) | (byte1 & 0xFF));
                             break;
                         case 0x04: // LBU - Load Byte Unsigned
-                            reg[rd] = getByte(progr,reg[rs1],imm,0) & 0xFF;
+                            reg[rd] = getByte(reg[rs1],imm,0) & 0xFF;
                             break;
                         case 0x05: // LHU - Load Halfword Unsigned
-                            byte1 = getByte(progr,reg[rs1],imm,0);
-                            byte2 = getByte(progr,reg[rs1],imm,1);
+                            byte1 = getByte(reg[rs1],imm,0);
+                            byte2 = getByte(reg[rs1],imm,1);
                             reg[rd] = (short)(((byte2 & 0xFF) << 8) | (byte1 & 0xFF)) & 0xFFFF;
                             break;
                         default:
@@ -383,7 +386,7 @@ public class Simulator {
 
                     break;
 
-                case 0x73: // Enviromental Calls (ecall)
+                case 0x73: // Environmental Calls (ecall)
 
                     switch (reg[10]){ // ecall type depend on value i a0
 
@@ -427,8 +430,9 @@ public class Simulator {
                             System.out.println((char) reg[11]);
                             break;
 
-                        case 0x2f: // ends the program with return code in a1
-                            System.out.println("Exited with error code " + reg[11]);
+                        case 0x11: // ends the program with return code in a1
+                            System.out.println("hej");
+                            System.exit(reg[11]);
                             break;
 
                         default:
@@ -451,12 +455,12 @@ public class Simulator {
     // Reads a binary file containing 32 bit instructions
     // Instructions are read in bytes and then bitshifted into
     // place to account for the little endian placement
-    private static int[] readBinaryFile(String input) throws IOException {
+    private static int readBinaryFile(String input) throws IOException {
 
         File data = new File(input);
 
         int FileLength = (int) data.length()/4; // Length of file in words
-        int instructionList[]= new int[memorySize];
+        int length=0;
 
 
         // Opens a binary file.
@@ -467,14 +471,15 @@ public class Simulator {
 
         for (int i = 0; i < FileLength; i++){
             for(int j = 0; j <= 3; j++){
-                instructionList[i] += (inputFile.readByte() & 0xFF) << (8*j);
+                progr[i] += (inputFile.readByte() & 0xFF) << (8*j);
             }
+            length++;
         }
 
         // Closes the file.
         inputFile.close();
 
-        return instructionList;
+        return length;
 
     }
 
@@ -530,7 +535,7 @@ public class Simulator {
     }
 
     // Returns byte from memory with an offset
-    private static byte getByte(int[] progr, int regvalue, int imm, int offset){
+    private static byte getByte(int regvalue, int imm, int offset){
         int remainder = (regvalue + imm + offset)%4;
         return (byte) (progr[(regvalue + imm + offset -remainder)/4] >> 8*remainder);
     }
