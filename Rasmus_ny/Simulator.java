@@ -4,34 +4,47 @@ import java.io.*;
 
 public class Simulator {
 
-
+    // Program Counter
     static int pc;
-    static int reg[] = new int[32];
-    static String fileName = "loop.bin";
-    static String fileNameRes = "loop.res";
-    static int[] mem = new int[0x1FFFFFF];
 
+    // Registers
+    static int reg[] = new int[32];
+
+    // Sets memory size to 100 MB
+    static int memorySize = 0x2FAF080;
+
+    // Name of test
+    static String testname = "loop";
+
+    // Test path
+    static String testfileName = "OfficialTest/" + testname + ".bin";
+
+    // Test result path
+    static String fileNameRes = "OfficialTest/" + testname + ".res";
+
+    // Output path
+    static String resultPath = "ProgramResults\\";
 
 
     public static void main(String[] args) throws IOException {
 
         pc = 0;
-        int instr,opcode,rd,rs1, rs2, funct3, funct7,shamt,remainder;
+        // values used in program decoding
+        int instr,opcode,rd,rs1, rs2, funct3, funct7,shamt,remainder,val;
         int imm_B1, imm_B2,imm_S1,imm_S2,imm,imm_B,imm_J,imm_U,imm_S;
+        byte byte1,byte2,byte3,byte4;
+
+        // values used in for ecalls and 32 bit multiplication
+        int counter,offset;
         long MulResult;
+        char ch;
 
 
-        int[] progr = readBinaryFile(fileName);
+        int[] progr = readBinaryFile(testfileName); // loads memory with instructions
+        System.out.println(progr.length);
 
 
-        // Prints list of all instructions
-        System.out.println("List of Instructions");
-        for (int k = 0; k < progr.length; k++){
-            System.out.println(String.format("0x%08X", progr[k]));
-        }
-        System.out.println();
-
-
+        // Main loop
         while(pc < progr.length) {
 
             instr = progr[pc];
@@ -70,25 +83,30 @@ public class Simulator {
             switch (opcode) {
 
                 case 0x03: // Opcode 0000011
+
                     switch (funct3){
                         case 0x00: // LB - Load Byte
-                            remainder = (reg[rs1] + imm)%4;
-                            reg[rd] = (byte) (mem[reg[rs1] + imm - remainder] >> 8*remainder);
+                            reg[rd] = getByte(progr,reg[rs1],imm,0);
                             break;
                         case 0x01: // LH - Load Halfword
-                            remainder = (reg[rs1] + imm)%4;
-                            reg[rd] = (short) (mem[reg[rs1] + imm-remainder] >> 8*remainder);
+                            byte1 = getByte(progr,reg[rs1],imm,0);
+                            byte2 = getByte(progr,reg[rs1],imm,1);
+                            reg[rd] = (short)(((byte2 & 0xFF) << 8) | (byte1 & 0xFF));
                             break;
                         case 0x02: // LW - Load Word
-                            reg[rd] = mem[reg[rs1]+imm];
+                            byte1 = getByte(progr,reg[rs1],imm,0);
+                            byte2 = getByte(progr,reg[rs1],imm,1);
+                            byte3 = getByte(progr,reg[rs1],imm,2);
+                            byte4 = getByte(progr,reg[rs1],imm,3);
+                            reg[rd] = ( ((byte4 & 0xFF) << 24) | ((byte3 & 0xFF) << 16) | ((byte2 & 0xFF) << 8) | (byte1 & 0xFF));
                             break;
                         case 0x04: // LBU - Load Byte Unsigned
-                            remainder = (reg[rs1] + imm)%4;
-                            reg[rd] = (byte) ((mem[reg[rs1] + imm - remainder] >> 8*remainder) & 0xFF);
+                            reg[rd] = getByte(progr,reg[rs1],imm,0) & 0xFF;
                             break;
                         case 0x05: // LHU - Load Halfword Unsigned
-                            remainder = (reg[rs1] + imm)%4;
-                            reg[rd] = (short) ((mem[reg[rs1] + imm-remainder] >> 8*remainder) & 0xFFFF);
+                            byte1 = getByte(progr,reg[rs1],imm,0);
+                            byte2 = getByte(progr,reg[rs1],imm,1);
+                            reg[rd] = (short)(((byte2 & 0xFF) << 8) | (byte1 & 0xFF)) & 0xFFFF;
                             break;
                         default:
                             System.out.println("For opcode 0x03, funct3" + funct3 + " has not been implemented yet");
@@ -108,7 +126,7 @@ public class Simulator {
                             reg[rd] = (reg[rs1] < imm) ? 1 : 0;
                             break;
                         case 0x03: // SLTIU
-                            reg[rd] = (Integer.toUnsignedLong(reg[rs1]) < imm) ? 1 : 0;
+                            reg[rd] = (Integer.toUnsignedLong(reg[rs1]) < Integer.toUnsignedLong(imm)) ? 1 : 0;
                             break;
                         case 0x04: // XORI
                             reg[rd] = reg[rs1] ^imm;
@@ -135,19 +153,63 @@ public class Simulator {
                     break;
 
                 case 0x17: // opcode 0010111 AUIPC - Add Upper Immediate to PC
+
                     reg[rd] = (pc-1)*4 + imm_U;
                     break;
 
                 case 0x23: // Opcode 0100011
+
                     switch (funct3){
                         case 0x00: // SB - Store Byte
-                            mem[(reg[rs1] + imm_S)] = (byte) reg[rs2];
+                            remainder = (reg[rs1] + imm_S)%4;
+                            byte1 = (byte) reg[rs2];
+                            progr[(reg[rs1] + imm_S)/4] = (progr[(reg[rs1] + imm_S)/4] & ~(0xFF << 8*remainder)) | (byte1 << 8*remainder);
                             break;
                         case 0x01: // SH - Store Halfword
-                            mem[(reg[rs1] + imm_S)] = (short) reg[rs2];
+                            remainder = (reg[rs1] + imm_S)%4;
+                            val = (reg[rs1] + imm_S)/4;
+
+                            if(remainder == 0){
+                                progr[val] &= 0xFFFF0000;
+                                progr[val] |= (short) reg[rs2];
+                            } else  if(remainder ==1){
+                                progr[val] &= 0xFF0000FF;
+                                progr[val] |= ((short) reg[rs2] << 8) & 0x00FFFF00;
+                            } else  if(remainder ==2){
+                                progr[val] &= 0x0000FFFF;
+                                progr[val] |= (short) reg[rs2] << 16;
+                            } else {
+                                progr[val] &= 0x00FFFFFF;
+                                progr[val+1] &= 0xFFFFFF00;
+                                progr[val] |= (short) reg[rs2] << 24;
+                                progr[val+1] |= ((short) reg[rs2] >>> 8) & 0x000000FF;
+                            }
                             break;
                         case 0x02: // SW - Store Word
-                            mem[reg[rs1] + imm_S] = reg[rs2];
+                            remainder = (reg[rs1] + imm_S)%4;
+                            val = (reg[rs1] + imm_S)/4;
+
+
+                            if(remainder == 0){
+                                progr[val] = reg[rs2];
+                            } else  if(remainder ==1){
+                                progr[val] &= 0x000000FF;
+                                progr[val+1] &= 0xFFFFFF00;
+                                progr[val] |= reg[rs2] << 8;
+                                progr[val+1] |= (reg[rs2] >>> 24);
+                            } else  if(remainder ==2){
+                                progr[val] &= 0x0000FFFF;
+                                progr[val+1] &= 0xFFFF0000;
+                                progr[val] |= reg[rs2] << 16;
+                                progr[val+1] |= (reg[rs2] >>> 16);
+
+                            } else {
+                                progr[val] &= 0x00FFFFFF;
+                                progr[val+1] &= 0xFF000000;
+                                progr[val] |= reg[rs2] << 24;
+                                progr[val+1] |= (reg[rs2] >>> 8);
+                            }
+
                             break;
                         default:
                             System.out.println("For opcode 0x23, funct3" + funct3 + " has not been implemented yet");
@@ -196,7 +258,7 @@ public class Simulator {
                         case 0x03:
                             switch (funct7){
                                 case 0x00: // SLTU - Set Less Than Unsigned
-                                    reg[rd] = (Integer.toUnsignedLong(reg[rs1]) < Integer.toUnsignedLong(reg[rs1])) ? 1 : 0;
+                                    reg[rd] = (Integer.toUnsignedLong(reg[rs1]) < Integer.toUnsignedLong(reg[rs2])) ? 1 : 0;
                                     break;
                                 case 0x01: // MULHU
                                     MulResult = Integer.toUnsignedLong(reg[rs1]) * Integer.toUnsignedLong(reg[rs2]);
@@ -225,9 +287,9 @@ public class Simulator {
                                     break;
                                 case 0x01: // DIVU
                                     if(reg[rs2] == 0){ // Checks if divisor is equal to 0
-                                        reg[rd] = -1;
+                                        reg[rd] = reg[rs1];
                                     } else {
-                                        reg[rd] = reg[rs1]/reg[rs2];
+                                        reg[rd] = (int) (Integer.toUnsignedLong(reg[rs1])/Integer.toUnsignedLong(reg[rs2]));
                                     }
                                     break;
                                 case 0x20://SRA - Shift Right Arithmetic
@@ -253,9 +315,9 @@ public class Simulator {
                             switch (funct7){
                                 case 0x01: // REMU - Remainder Unsigned
                                     if(reg[rs2] == 0){ // Checks if divisor is equal to 0
-                                        reg[rd] = reg[rs1];
+                                        reg[rd] = (int) Integer.toUnsignedLong(reg[rs1]);
                                     } else {
-                                        reg[rd] = reg[rs1] % reg[rs2];
+                                        reg[rd] = (int) (Integer.toUnsignedLong(reg[rs1]) % Integer.toUnsignedLong(reg[rs2]));
                                     }
                                     break;
                                 case 0x00: // AND
@@ -268,6 +330,7 @@ public class Simulator {
                     break;
 
                 case 0x37: // opcode 0110111 LUI - Load Upper Immediate
+
                     reg[rd] = imm_U;
                     break;
 
@@ -295,12 +358,12 @@ public class Simulator {
                             }
                             break;
                         case 0x06: // BLTU - Branch Less Than Unsigned
-                            if (reg[rs1] < reg[rs2]){
+                            if (Integer.toUnsignedLong(reg[rs1]) < Integer.toUnsignedLong(reg[rs2])){
                                 pc = pc + imm_B - 1;
                             }
                             break;
                         case 0x07: // BGEU - Branch >= Unsigned
-                            if (reg[rs1] >= reg[rs2]){
+                            if (Integer.toUnsignedLong(reg[rs1]) >= Integer.toUnsignedLong(reg[rs2])){
                                 pc = pc + imm_B - 1;
                             }
                             break;
@@ -308,39 +371,68 @@ public class Simulator {
                     break;
 
                 case 0x67: // Opcode 1100111 JALR - Jump and Link Register
+
                     reg[rd] = pc*4;
                     pc = (reg[rs1] + imm)/4;
                     break;
 
                 case 0x6f: // Opcode 1101111 JAL - Jump and Link
+
                     reg[rd] = pc*4;
                     pc += imm_J -1;
 
                     break;
 
-                case 0x73: // ecall
-                    switch (reg[10]){
-                        case 0x01:
+                case 0x73: // Enviromental Calls (ecall)
+
+                    switch (reg[10]){ // ecall type depend on value i a0
+
+                        case 0x01: // prints integer in a1
                             System.out.print(reg[11]);
                             break;
-                        case 0x04:
-                            System.out.println("prints the null-terminated string whose address is in a1 - INCOMPLETE");
+
+                        case 0x04: // Prints null-terminated string whose address is in a1
+                            counter = 0;
+                            offset = 0;
+                            for(;;){
+                                if (counter == 4){
+                                    offset +=1;
+                                    counter=0;
+                                }
+                                ch = (char) ((progr[(reg[11]/4)+offset] >> 8*counter) & 0xFF);
+                                if (ch == 0){
+                                    break;
+                                }
+                                System.out.print(ch);
+                                counter++;
+                            }
+                            System.out.println();
                             break;
-                        case 0x09:
-                            System.out.println("allocates a1 bytes on the heap, returns pointer to start in a0 - INCOMPLETE");
+
+                        case 0x09: // allocates a1 bytes on the heap, returns pointer to start in a0 - INCOMPLETE
                             break;
-                        case 0x0a:
-                            System.out.println("DONE");
-                            printResult(fileNameRes);
+
+                        case 0x0a: // ends the program
+                            System.out.println("Result:");
+                            for (int i = 0; i < reg.length; ++i) {
+                                System.out.print(reg[i] + " ");
+                            }
+                            System.out.println();
+                            printResult(fileNameRes,reg);
+                            writeOutput(reg);
                             System.exit(0);
                             break;
-                        case 0x0b:
+
+                        case 0x0b: // prints ASCII character in a1
                             System.out.println((char) reg[11]);
                             break;
-                        case 0x2f:
+
+                        case 0x2f: // ends the program with return code in a1
+                            System.out.println("Exited with error code " + reg[11]);
                             break;
+
                         default:
-                            System.out.println("Environmental Call " + reg[10] + " not implemented");
+                            System.out.println("Invalid ecall " + reg[10]);
                     }
                     break;
 
@@ -351,22 +443,20 @@ public class Simulator {
 
             reg[0] = 0; // Forces x0 = 0;
 
-            //System.out.println("opcode = " + String.format("0x%02X", opcode));
-            for (int i = 0; i < reg.length; ++i) {
-                System.out.print(reg[i] + " ");
-            }
-            System.out.println();
-
         }
 
 
     }
+
+    // Reads a binary file containing 32 bit instructions
+    // Instructions are read in bytes and then bitshifted into
+    // place to account for the little endian placement
     private static int[] readBinaryFile(String input) throws IOException {
 
         File data = new File(input);
 
         int FileLength = (int) data.length()/4; // Length of file in words
-        int instructionList[]= new int[FileLength];
+        int instructionList[]= new int[memorySize];
 
 
         // Opens a binary file.
@@ -388,7 +478,8 @@ public class Simulator {
 
     }
 
-    private static void printResult(String input) throws IOException{
+    // Prints the expected output of a test .res file
+    private static void printResult(String input, int[] reg) throws IOException{
         File data = new File(input);
 
         int FileLength = (int) data.length()/4; // Length of file in words
@@ -416,4 +507,31 @@ public class Simulator {
 
     }
 
+    // Creates a binary dump of the registers in specified location
+    private static void writeOutput (int[] data) throws IOException{
+        FileOutputStream out = new FileOutputStream(resultPath+testname+".bin");
+
+        byte[] array = intArrayToByteArray(data);
+        out.write(array);
+    }
+
+    // Reverses order of bytearray to little endian
+    private static byte[] intArrayToByteArray(int[] data) {
+        byte[]array = new byte[data.length << 2];
+
+        for (int i=0; i < data.length; i++) {
+            int j = i << 2;
+            array[j++] = (byte) ((data[i] >>> 0) & 0xff);
+            array[j++] = (byte) ((data[i] >>> 8) & 0xff);
+            array[j++] = (byte) ((data[i] >>> 16) & 0xff);
+            array[j++] = (byte) ((data[i] >>> 24) & 0xff);
+        }
+        return array;
+    }
+
+    // Returns byte from memory with an offset
+    private static byte getByte(int[] progr, int regvalue, int imm, int offset){
+        int remainder = (regvalue + imm + offset)%4;
+        return (byte) (progr[(regvalue + imm + offset -remainder)/4] >> 8*remainder);
+    }
 }
