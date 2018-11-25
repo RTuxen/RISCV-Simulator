@@ -10,8 +10,8 @@ public class Simulator {
     // Registers
     static int reg[] = new int[32];
 
-    // Sets memory size to 100 MB
-    static int memorySize = 0x2FAF080;
+    // Sets memory size to 10 MB
+    static int memorySize = 0x4C4B40;
 
     // Memory array
     static int[] progr = new  int[memorySize];
@@ -44,6 +44,7 @@ public class Simulator {
 
 
         int length = readBinaryFile(testfileName); // loads memory with instructions
+
 
 
 
@@ -165,8 +166,11 @@ public class Simulator {
                     switch (funct3){
                         case 0x00: // SB - Store Byte
                             remainder = (reg[rs1] + imm_S)%4;
+                            val = (reg[rs1] + imm_S)/4;
+
                             byte1 = (byte) reg[rs2];
-                            progr[(reg[rs1] + imm_S)/4] = (progr[(reg[rs1] + imm_S)/4] & ~(0xFF << 8*remainder)) | (byte1 << 8*remainder);
+                            progr[val] &= ~(0xFF << 8*remainder);
+                            progr[val] |= (byte1 << 8*remainder) & (0xFF << 8*remainder);
                             break;
                         case 0x01: // SH - Store Halfword
                             remainder = (reg[rs1] + imm_S)%4;
@@ -212,6 +216,7 @@ public class Simulator {
                                 progr[val] |= reg[rs2] << 24;
                                 progr[val+1] |= (reg[rs2] >>> 8);
                             }
+
 
                             break;
                         default:
