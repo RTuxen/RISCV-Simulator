@@ -46,8 +46,6 @@ public class Simulator {
         int length = readBinaryFile(testfileName); // loads memory with instructions
 
 
-
-
         // Main loop
         while(pc < length) {
 
@@ -414,14 +412,13 @@ public class Simulator {
                                 System.out.print(ch);
                                 counter++;
                             }
-                            System.out.println();
                             break;
 
                         case 0x09: // allocates a1 bytes on the heap, returns pointer to start in a0 - INCOMPLETE
                             break;
 
                         case 0x0a: // ends the program
-                            System.out.println("Result:");
+                            System.out.println("\nResult:");
                             for (int i = 0; i < reg.length; ++i) {
                                 System.out.print(reg[i] + " ");
                             }
@@ -436,7 +433,6 @@ public class Simulator {
                             break;
 
                         case 0x11: // ends the program with return code in a1
-                            System.out.println("hej");
                             System.exit(reg[11]);
                             break;
 
