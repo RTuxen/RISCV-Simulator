@@ -1,11 +1,10 @@
-package sample;
+package Assignment;
 
-import javafx.application.Application;
-import javafx.stage.Stage;
 import java.io.*;
 
 
 public class Simulator {
+
     // Program Counter
     static int pc;
 
@@ -21,19 +20,21 @@ public class Simulator {
     // Name of test
     static String testname = "loop";
 
-    // Test path
-    static String testfileName = "OfficialTest/" + testname + ".bin";
+    // If enabled, the program prints output in console
+    static boolean outPutInConsole = true;
 
-    // Test result path
-    static String fileNameRes = "OfficialTest/" + testname + ".res";
+    // Name of test Folder
+    static String folderName = "./OfficialTest/";
 
-    // Output path
-    static String resultPath = "ProgramResults\\";
+    // Name of output folder
+    static String resultPath = "./ProgramResults/";
+
 
 
     public static void main(String[] args) throws IOException {
 
-        pc = 0;
+        pc = 0; // Initializes Program Counter
+
         // values used in program decoding
         int instr,opcode,rd,rs1, rs2, funct3, funct7,shamt,remainder,val;
         int imm_B1, imm_B2,imm_S1,imm_S2,imm,imm_B,imm_J,imm_U,imm_S;
@@ -45,24 +46,26 @@ public class Simulator {
         char ch;
 
 
-        int length = readBinaryFile(testfileName); // loads memory with instructions
+        int length = readBinaryFile(folderName + testname + ".bin"); // loads memory with instructions
 
 
-        // Main loop
+        // Decoding and execute loop
+        // Runs until there are not more instructions
+        // or programs ends with ecall 10/17
         while(pc < length) {
 
-            instr = progr[pc];
-            opcode = instr & 0x7f;
-            rd = (instr >> 7) & 0x1f;
-            funct3 = (instr >> 12) & 0x07;
-            rs1 = (instr >> 15) & 0x1f;
-            rs2 = (instr >> 20) & 0x1f;
-            imm_B1 = (instr >> 7) & 0x1f;
-            imm_B2 = (instr >>> 25);
-            imm_S1 = imm_B1;
-            imm_S2 = imm_B2;
-            funct7 = (instr >> 25);
-            shamt = (instr >> 20) & 0x01f;
+            instr = progr[pc];                      // Gets 32 bit instruction
+            opcode = instr & 0x7f;                  // Gets opcode
+            rd = (instr >> 7) & 0x1f;               // Gets rd
+            funct3 = (instr >> 12) & 0x07;          // Gets funct3
+            rs1 = (instr >> 15) & 0x1f;             // Gets rs1
+            rs2 = (instr >> 20) & 0x1f;             // Gets rs1
+            imm_B1 = (instr >> 7) & 0x1f;           // Gets lower imm_B
+            imm_B2 = (instr >>> 25);                // Gets upper imm_B
+            imm_S1 = imm_B1;                        // Gets lower imm_S
+            imm_S2 = imm_B2;                        // Gets upper imm_S
+            funct7 = (instr >> 25);                 // Gets funct7
+            shamt = (instr >> 20) & 0x01f;          // Gets shamt
 
             // Immediate value for I-type
             imm = (instr >> 20);
@@ -82,7 +85,7 @@ public class Simulator {
             imm_J = (((instr >> 20) & 0xFFF007FE) | ((instr >>> 9) & 0x00000800) | (instr & 0x000FF000))/4;
 
 
-            ++pc; // We count in 4 byte words
+            ++pc; // Program counts in 4 byte words
 
             switch (opcode) {
 
@@ -420,14 +423,9 @@ public class Simulator {
                             break;
 
                         case 0x0a: // ends the program
-                            System.out.println("\nResult:");
-                            for (int i = 0; i < reg.length; ++i) {
-                                System.out.print(reg[i] + " ");
-                            }
-                            System.out.println();
-                            printResult(fileNameRes,reg);
-                            writeOutput(reg);
-                            javafx.application.Application.launch(Main.class);
+                            printResultConsole();
+                            writeOutputFile();
+                            javafx.application.Application.launch(TableGen.class);  // Launches table GUI
                             System.exit(0);
                             break;
 
@@ -436,7 +434,9 @@ public class Simulator {
                             break;
 
                         case 0x11: // ends the program with return code in a1
-                            javafx.application.Application.launch(Main.class);
+                            printResultConsole();
+                            writeOutputFile();
+                            javafx.application.Application.launch(TableGen.class); // Launches table GUI
                             System.exit(reg[11]);
                             break;
 
@@ -488,50 +488,51 @@ public class Simulator {
 
     }
 
-    // Prints the expected output of a test .res file
-    private static void printResult(String input, int[] reg) throws IOException{
-        File data = new File(input);
+    // Prints the register values from test and .res file to console
+    private static void printResultConsole() throws IOException{
 
-        int FileLength = (int) data.length()/4; // Length of file in words
-        int resultList[]= new int[FileLength];
+        if (outPutInConsole){
+            System.out.println("\nResult:");
+            for (int i = 0; i < reg.length; ++i) {
+                System.out.print(reg[i] + " ");
+            }
+
+            File resFile = new File(folderName + testname + ".res");
+
+            // Prints out register values from .res file
+            if (resFile.exists()){
+                int FileLength = (int) resFile.length()/4; // Length of file in words
+                int resultList[]= new int[FileLength];
 
 
-        // Opens a binary file.
-        FileInputStream fstream =
-                new FileInputStream(input);
-        DataInputStream inputFile =
-                new DataInputStream(fstream);
 
-        for (int i = 0; i < FileLength; i++){
-            for(int j = 0; j <= 3; j++){
-                resultList[i] += (inputFile.readByte() & 0xFF) << (8*j);
+                // Opens a binary file.
+                FileInputStream fstream =
+                        new FileInputStream(folderName + testname + ".res");
+                DataInputStream inputFile =
+                        new DataInputStream(fstream);
+
+                for (int i = 0; i < FileLength; i++){
+                    for(int j = 0; j <= 3; j++){
+                        resultList[i] += (inputFile.readByte() & 0xFF) << (8*j);
+                    }
+                }
+
+                // Closes the file.
+                inputFile.close();
+                System.out.println("\nResult from " + testname + ".res :");
+                for (int i = 0; i < resultList.length; ++i) {
+                    System.out.print(resultList[i] + " ");
+                }
             }
         }
-
-        /*//Creates 32 Registers with register number and it's value
-        Main.Register[] regArray = new Main.Register[32];
-        for (int i = 0; i < 32; i++){
-            //regArray[i] = new Main.Register("x" + i), Integer.toString(reg[i]));
-            regArray[i].setRegister(Integer.toString(i));
-            regArray[i].setValue(Integer.toString(reg[i]));
-        }*/
-
-        //start(Stage stage, Main.Register[] regArray)
-
-        // Closes the file.
-        inputFile.close();
-        System.out.println("Expected Result:");
-        for (int i = 0; i < resultList.length; ++i) {
-            System.out.print(resultList[i] + " ");
-        }
-
     }
 
     // Creates a binary dump of the registers in specified location
-    private static void writeOutput (int[] data) throws IOException{
+    private static void writeOutputFile () throws IOException{
         FileOutputStream out = new FileOutputStream(resultPath+testname+".bin");
 
-        byte[] array = intArrayToByteArray(data);
+        byte[] array = intArrayToByteArray(reg);
         out.write(array);
     }
 
