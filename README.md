@@ -9,4 +9,4 @@ sudo apt install openjdk-8-jdk
 Verify that is has been installed by
 ```
 java -version
-´´´
+````
