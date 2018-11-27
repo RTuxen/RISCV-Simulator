@@ -32,7 +32,7 @@ cd cd Documents/folder
 ```
 Then compile the files using
 ```
-cd Assignment/
+cd Assignment
 javac *.java
 ```
 then run files by
