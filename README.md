@@ -1,9 +1,12 @@
 # RISCV-Simulator
-A Java implemtation of a RISCV instruction set Simulator.
+An instruction set simulator for the RISC-V architecture written in Java running on Ubuntu 18.04.
 
 # Guide til at køre på Ubuntu
-Assuming no other Java files present:
+First download Java OpenJDK8
 ```
-cd path/to/package/files
-javac *.java
+sudo apt install openjdk-8-jdk
 ```
+Verify that is has been installed by
+```
+java -version
+´´´
