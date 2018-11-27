@@ -23,4 +23,21 @@ If you have several versions of java you can manage them by
 sudo update-alternatives --config java
 sudo update-alternatives --config javac
 ```
-- Hej
+Make sure you select "java-8-opgenjdk..."
+- How to run the program
+Download all files in the "Ubuntu Code" folder and place on the VM
+Go to the folder using
+```
+cd cd Documents/folder
+```
+Then compile the files using
+```
+cd Assignment/
+javac *.java
+```
+then run files by
+```
+cd ..
+java Assignment.Simulator XX
+```
+Where 'XX' is the testname
