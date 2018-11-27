@@ -41,3 +41,9 @@ cd ..
 java Assignment.Simulator XX
 ```
 Where 'XX' is the testname
+
+If you get the error message Failed to load module “canberra-gtk-module” download
+```
+sudo apt install libcanberra-gtk-module libcanberra-gtk3-module
+```
+
