@@ -5,9 +5,6 @@ import java.io.*;
 
 public class Simulator {
 
-    // Program Counter
-    static int pc;
-
     // Registers
     static int reg[] = new int[32];
 
@@ -17,11 +14,11 @@ public class Simulator {
     // Memory array
     static int[] progr = new  int[memorySize];
 
-    // Name of test
-    static String testname = "loop";
-
     // If enabled, the program prints output in console
     static boolean outPutInConsole = true;
+
+    // Name of test
+    static String testname;
 
     // Name of test Folder
     static String folderName = "./OfficialTest/";
@@ -30,11 +27,11 @@ public class Simulator {
     static String resultPath = "./ProgramResults/";
 
 
-
     public static void main(String[] args) throws IOException {
-	testname = args[0];
 
-        pc = 0; // Initializes Program Counter
+        testname = args[0]; // Sets name of test to input from command line argument
+
+        int pc = 0; // Initializes Program Counter
 
         // values used in program decoding
         int instr,opcode,rd,rs1, rs2, funct3, funct7,shamt,remainder,val;
